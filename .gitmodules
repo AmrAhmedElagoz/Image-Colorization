@@ -1,0 +1,6 @@
+[submodule "baselines/zhang2016"]
+	path = baselines/zhang2016
+	url = git@github.com:richzhang/colorization.git
+[submodule "baselines/sd_lora"]
+	path = baselines/sd_lora
+	url = git@github.com:mohsenosl99/colorization_SD_Lora.git
