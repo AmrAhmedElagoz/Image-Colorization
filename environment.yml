@@ -1,0 +1,30 @@
+name: color_image
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  # numerics / imaging (conda-forge)
+  - numpy>=1.26
+  - scipy>=1.15
+  - pillow>=10.2
+  - scikit-image>=0.22
+  - matplotlib>=3.9
+  - tqdm>=4.66
+  - ipython>=8.0
+  - prettytable>=3.0
+  # deep-learning stack (pip, so the default CUDA wheels are used)
+  - pip:
+      - torch>=2.5
+      - torchvision>=0.19.1
+      - diffusers>=0.32,<0.33
+      - transformers>=4.46,<4.47
+      - peft>=0.13,<0.14
+      - accelerate>=1.0,<1.2
+      - huggingface-hub>=0.26,<0.27
+      - kornia>=0.7.4
+      - lpips>=0.1.4
+      - pytorch-fid>=0.3.0
+      - wandb>=0.18
+      # the project itself (color_image package + CLI entry points)
+      - -e .
