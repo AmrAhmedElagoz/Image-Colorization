@@ -1,5 +1,25 @@
 import torch
 import kornia.color as kc
+from PIL import Image
+import numpy as np
+from torch.utils.data import Dataset
+from pathlib import Path
+from torchvision import transforms as T
+class EvalDataset(Dataset):
+    """
+    Eval dataset
+    """
+    def __init__(self, root: Path, split: str, size: int, limit: int | None = None):
+        self.root = Path(root)
+        self.names = (self.root / "splits" / f"{split}.txt").read_text().split()[:limit]
+        self.tf = T.Compose([T.Resize(size, antialias=True), T.CenterCrop(size), T.ToTensor()])
+
+    def __len__(self) -> int:
+        return len(self.names)
+
+    def __getitem__(self, i: int) -> dict:
+        img = Image.open(self.root / "images" / self.names[i]).convert("RGB")
+        return {"rgb": self.tf(img), "name": self.names[i]}
 
 
 def psnr(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
