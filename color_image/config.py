@@ -1,9 +1,10 @@
 from dataclasses import fields, dataclass
-from pydantic import Field
 from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+ZHANG_DIR = ROOT / "baselines" / "zhang2016"
+sys.path.insert(0, str(ZHANG_DIR))  # makes `import colorizers` work
 MODELS = ("eccv16", "siggraph17", "sd_lora")
 
 
@@ -22,9 +23,8 @@ class Config:
     save_images: bool = True 
     models: str = "eccv16,siggraph17" 
 
-    zhang_dir: Path = ROOT / "baselines" / "zhang2016"
-    pts_in_hull: Path = ROOT / "scripts" / "assets" / "pts_in_hull.npy" 
-    sys.path.insert(0, str(zhang_dir))
+    zhang_dir: Path = ZHANG_DIR
+    pts_in_hull: Path = ROOT / "color_image" / "assets" / "pts_in_hull.npy"
 
     @property
     def model_list(self) -> list[str]:
