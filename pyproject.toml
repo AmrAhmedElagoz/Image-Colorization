@@ -19,6 +19,7 @@ dependencies = [
     "torch>=2.5",
     "torchvision>=0.19.1",
     "numpy>=1.26",
+    "scipy>=1.15,<1.18",
     "pillow>=10.2",
     "tqdm>=4.66",
     "matplotlib>=3.9",
@@ -82,7 +83,7 @@ base2 = [
     "kornia>=0.7.4",
     "lpips>=0.1.4",
     "pytorch-fid>=0.3.0",
-    "scipy>=1.15",
+    "scipy>=1.15,<1.18",
     "pillow>=10.2",
     "prettytable>=3.0",   
 ]

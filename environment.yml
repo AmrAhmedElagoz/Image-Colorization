@@ -6,7 +6,7 @@ dependencies:
   - pip
   # numerics / imaging (conda-forge)
   - numpy>=1.26
-  - scipy>=1.15
+  - scipy>=1.15,<1.18
   - pillow>=10.2
   - scikit-image>=0.22
   - matplotlib>=3.9
