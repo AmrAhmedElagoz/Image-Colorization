@@ -97,3 +97,26 @@ def test_fid_zero_for_identical_sets_and_grows_with_shift():
     a, _ = clouds(0.0)
     assert metrics.fid(a, a) < 1e-3
     assert metrics.fid(*clouds(0.3)) < metrics.fid(*clouds(0.8))
+
+
+def test_fid_matches_pytorch_fid_formula():
+    from pytorch_fid.fid_score import calculate_frechet_distance
+    a, b = clouds(0.4)
+    ref = calculate_frechet_distance(a.mean(0), np.cov(a, rowvar=False), b.mean(0), np.cov(b, rowvar=False))
+    assert abs(metrics.fid(a, b) - ref) < 1e-6 * max(1.0, abs(ref))
+
+
+def test_fid_works_when_scipy_sqrtm_has_no_disp():
+    import scipy.linalg as sl
+    orig = sl.sqrtm
+
+    def no_disp(A, *args, **kw):
+        if "disp" in kw:
+            raise TypeError("sqrtm() got an unexpected keyword argument 'disp'")
+        return orig(A, *args, **kw)
+
+    sl.sqrtm = no_disp
+    try:
+        assert metrics.fid(*clouds(0.5)) > 0
+    finally:
+        sl.sqrtm = orig

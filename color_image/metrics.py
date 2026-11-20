@@ -120,11 +120,26 @@ def inception_features(folder: Path, device: str = "cpu", batch_size: int = 50) 
     return get_activations([str(f) for f in files], model, batch_size, 2048, device)
 
 
+def frechet_distance(mu1: np.ndarray, s1: np.ndarray, mu2: np.ndarray, s2: np.ndarray, eps: float = 1e-6) -> float:
+    """
+    Frechet distance between two Gaussians. Same formula as pytorch-fid, without its sqrtm(..., disp=False)
+    call, which recent scipy versions reject.
+    """
+    from scipy import linalg
+    covmean = linalg.sqrtm(s1 @ s2)
+    if not np.isfinite(covmean).all():
+        off = np.eye(s1.shape[0]) * eps
+        covmean = linalg.sqrtm((s1 + off) @ (s2 + off))
+    if np.iscomplexobj(covmean):
+        if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
+            raise ValueError(f"imaginary component {np.abs(covmean.imag).max()} in sqrtm")
+        covmean = covmean.real
+    return float((mu1 - mu2) @ (mu1 - mu2) + np.trace(s1) + np.trace(s2) - 2 * np.trace(covmean))
+
+
 def fid(real: np.ndarray, fake: np.ndarray) -> float:
     """FID between two feature sets; with ~1k images it is biased, compare like with like only."""
-    from pytorch_fid.fid_score import calculate_frechet_distance
-    return float(calculate_frechet_distance(real.mean(0), np.cov(real, rowvar=False),
-                                            fake.mean(0), np.cov(fake, rowvar=False)))
+    return frechet_distance(real.mean(0), np.cov(real, rowvar=False), fake.mean(0), np.cov(fake, rowvar=False))
 
 
 def kid(real: np.ndarray, fake: np.ndarray, subsets: int = 100, subset_size: int = 500, seed: int = 0) -> tuple[float, float]:
