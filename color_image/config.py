@@ -30,3 +30,10 @@ class Config:
     @property
     def model_list(self) -> list[str]:
         return [m.strip() for m in self.models.split(",") if m.strip()]
+
+
+@dataclass
+class ModelConfig:
+
+    clip_id: str = "openai/clip-vit-base-patch32"
+    clip_ckpt: Path | None = None 
