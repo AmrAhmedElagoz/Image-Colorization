@@ -36,4 +36,12 @@ class Config:
 class ModelConfig:
 
     clip_id: str = "openai/clip-vit-base-patch32"
+    sd_id: str = "timbrooks/instruct-pix2pix"
     clip_ckpt: Path | None = None 
+    prompt: str = "Colorize the photo"
+    timestep: int = 999
+    unet_rank: int = 16
+    vae_rank: int = 8
+    n_bins: int = 313
+    grad_checkpointing: bool = True
+
