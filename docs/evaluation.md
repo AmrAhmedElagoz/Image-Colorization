@@ -38,6 +38,9 @@ python scripts/evaluate.py --pred eccv16=runs/baselines_test1000/eccv16 \
 Outputs `runs/eval/summary.json` (means, CIs, paired differences, FID, KID) and `runs/eval/per_image.csv`.
 `--realism` downloads the Inception weights on first use.
 
+## Exploring the results
+`scripts/eval_explorer.py` builds an interactive page from the same outputs; see [evaluation-explorer.md](evaluation-explorer.md).
+
 ## Limits
 - One test split of 1,000 images: intervals capture which images were drawn, not training-run variance.
 - No metric here is validated against human judgement for colourization; the user study is the primary evidence

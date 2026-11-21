@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Evaluation Explorer</title>
+<style>
+:root{--bg:#fafaf7;--fg:#222;--mut:#666;--card:#fff;--line:#ddd;--good:#2b8a3e;--truth:#444;--gray:#888;--m0:#e0559e;--m1:#2aa889;--m2:#4c78c9;--m3:#d98a1f;--m4:#8b5cc7;--m5:#c0392b}
+@media(prefers-color-scheme:dark){:root{--bg:#16171a;--fg:#e8e8e8;--mut:#9aa;--card:#202226;--line:#383b40;--good:#69db7c;--truth:#ddd;--gray:#aaa;--m0:#f06fb0;--m1:#4fd1b0;--m2:#7aa2f0;--m3:#f0b04f;--m4:#b794f0;--m5:#f08070}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
+main{max-width:1040px;margin:0 auto;padding:16px}
+h1{margin:.2em 0}h2{margin:1.4em 0 .3em;font-size:1.15em}.sub,.hint{color:var(--mut)}.hint{font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px;overflow-x:auto}
+table{border-collapse:collapse;width:100%}th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}th{font-weight:600;color:var(--mut);font-size:13px}
+td.best{font-weight:700;color:var(--good)}td.name{cursor:help;border-bottom:1px dotted var(--mut)}
+tr.grp td{font-weight:700;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom:none;padding-top:12px}
+.imgs{display:flex;gap:10px;flex-wrap:wrap}.imgs figure{margin:0;text-align:center;flex:1;min-width:150px}
+.imgs img{width:100%;max-width:240px;border-radius:6px;display:block;margin:0 auto}.imgs figcaption{font-size:13px;margin-top:3px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+select,button,textarea{font:inherit;padding:4px 8px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
+button{cursor:pointer}textarea{width:100%;box-sizing:border-box;min-height:70px}
+canvas{width:100%;height:210px;display:block}
+ul.refl li{margin:4px 0}.tag{display:inline-block;padding:0 7px;border-radius:99px;border:1px solid var(--line);font-size:12px;color:var(--mut)}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
+</style></head><body><main>
+<h1>Evaluation Explorer</h1>
+<p class="sub" id="intro"></p>
+
+<h2>1 · Scoreboard (all test photos)</h2>
+<div class="card"><table id="board"></table><p class="hint" id="boardnote"></p></div>
+
+<h2>2 · One photo, all versions</h2>
+<div class="card">
+ <div class="bar"><label>Photo <select id="pick"></select></label>
+  <button id="prev">◀ prev</button><button id="next">next ▶</button><button id="rand">random</button>
+  <span class="hint" id="pname"></span></div>
+ <div class="imgs" id="imgs" style="margin-top:10px"></div>
+</div>
+<div class="card"><table id="one"></table>
+<p class="hint">Per-photo values. Closeness metrics (PSNR, SSIM, LPIPS) compare to this photo's truth. "Close to truth" metrics use this photo's own truth value.</p></div>
+
+<h2>3 · Where does this photo sit among all the others?</h2>
+<div class="card">
+ <div class="bar"><label>Metric <select id="met"></select></label><span class="hint" id="metdef"></span></div>
+ <canvas id="cv"></canvas><div class="hint" id="legend"></div>
+</div>
+
+<h2>4 · Reflection (generated from the numbers above)</h2>
+<div class="card"><ul class="refl" id="refl"></ul>
+ <p class="hint">Your own reading of this photo (saved in your browser only):</p><textarea id="note" placeholder="What do you see? Do the metrics agree with your eyes?"></textarea></div>
+<p class="hint" id="foot"></p>
+</main>
+<script>
+const D=__DATA__;
+const $=id=>document.getElementById(id);
+const METH=D.models.filter(m=>m!=='ground_truth');          // gray + the evaluated methods
+const REAL=METH.filter(m=>m!=='gray');                       // the evaluated methods
+const PAL=['--m0','--m1','--m2','--m3','--m4','--m5'];
+const COL={gray:'--gray',ground_truth:'--truth'};REAL.forEach((m,j)=>COL[m]=PAL[j%PAL.length]);
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const lab=m=>m=='gray'?'gray input':m=='ground_truth'?'ground truth':m;
+// metric: [label, direction, group, definition]; direction: up | down | zero | truth
+const M={
+ auc_ab_balanced:['balanced AuC','up','colour','Colour accuracy where rare, saturated colours count more (weights from the train split). 1 = perfect.'],
+ cf_gap:['colourfulness gap (pred − truth)','zero','colour','Colourfulness of the prediction minus the truth. Negative = duller than reality, positive = over-saturated, 0 = ideal.'],
+ vivid_share:['vivid pixels (share)','truth','colour','Share of pixels with Lab chroma above 30. Compare with the truth.'],
+ mean_chroma:['mean chroma','truth','colour','Average Lab saturation sqrt(a²+b²). Compare with the truth.'],
+ colorfulness:['colourfulness (CF)','truth','colour','Hasler & Süsstrunk spread of red-green / yellow-blue. Compare with the truth.'],
+ psnr:['PSNR (dB)','up','closeness','Pixel error on a log scale; higher = closer to the photo\'s truth.'],
+ ssim:['SSIM (RGB)','up','closeness','Local pattern similarity, 1 = identical.'],
+ lpips_vgg:['LPIPS (VGG)','down','closeness','Distance between deep VGG features; lower = more alike.'],
+ auc_ab:['AuC, plain (secondary)','up','closeness','Zhang\'s colour accuracy; a gray image already scores high on it.']};
+const ORDER=['auc_ab_balanced','cf_gap','vivid_share','mean_chroma','colorfulness','psnr','ssim','lpips_vgg','auc_ab'];
+const fmt=(k,v)=>k=='psnr'?v.toFixed(2):(k=='cf_gap'||k=='mean_chroma'||k=='colorfulness')?v.toFixed(1):k=='vivid_share'?(v*100).toFixed(1)+'%':v.toFixed(3);
+const hwfmt=(k,hw)=>k=='vivid_share'?(hw*100).toFixed(1):hw.toFixed(k=='psnr'||k=='cf_gap'||k=='mean_chroma'||k=='colorfulness'?1:3);
+function goodness(k,v,truth){const d=M[k][1];return d=='up'?v:d=='down'?-v:d=='zero'?-Math.abs(v):-Math.abs(v-truth)}
+const bestOf=(k,get,tr)=>METH.reduce((a,m)=>goodness(k,get(m),tr)>goodness(k,get(a),tr)?m:a,METH[0]);
+$('intro').textContent=`${D.n} ${D.split} photos, ${REAL.length} method${REAL.length>1?'s':''} (${REAL.join(', ')}) plus the gray and ground-truth reference rows. Hover a metric name for its definition. Green bold = best of the methods shown. In the per-photo tally, colourfulness is not counted separately because it equals the colourfulness gap plus a constant.`;
+$('foot').textContent=`Data: summary.json and per_image.csv from scripts/evaluate.py (seed ${D.seed}, ${D.boot} bootstrap resamples; ± = half-width of the 95% interval).`;
+
+// ---- 1. scoreboard
+(function(){
+ const cols=[...METH,'ground_truth'],n=cols.length+1;
+ let h='<tr><th>metric</th>'+cols.map(m=>`<th>${lab(m)}</th>`).join('')+'</tr>';
+ const rows=(grp,title)=>{h+=`<tr class="grp"><td colspan="${n}">${title}</td></tr>`;
+  for(const k of ORDER.filter(x=>M[x][2]==grp)){
+   const mean=m=>D.summary[m][k].mean,tr=mean('ground_truth'),best=bestOf(k,mean,tr);
+   h+=`<tr><td class="name" title="${M[k][3]}">${M[k][0]}</td>`;
+   for(const m of cols){const s=D.summary[m][k],hw=(s.hi-s.lo)/2;
+     h+=`<td class="${m==best?'best':''}">${fmt(k,s.mean)}${m=='ground_truth'&&grp=='closeness'?'':` <span class="hint">±${hwfmt(k,hw)}</span>`}</td>`}
+   h+='</tr>'}};
+ rows('colour','Does it have colour? (primary)');rows('closeness','How close to the real photo? (reference)');
+ if(METH.every(m=>D.summary[m].fid!==undefined)){
+  h+=`<tr class="grp"><td colspan="${n}">Does it look real? (set-level, compare only with each other)</td></tr>`;
+  const fb=METH.reduce((a,m)=>D.summary[m].fid<D.summary[a].fid?m:a,METH[0]),kb=METH.reduce((a,m)=>D.summary[m].kid.mean<D.summary[a].kid.mean?m:a,METH[0]);
+  h+='<tr><td class="name" title="Inception-feature distance between the real and generated sets; lower = more real-photo-like. Biased at about 1,000 images.">FID</td>'+METH.map(m=>`<td class="${m==fb?'best':''}">${D.summary[m].fid.toFixed(1)}</td>`).join('')+'<td>0</td></tr>';
+  h+='<tr><td class="name" title="Unbiased kernel distance on the same features; ± is the std over random subsets (stability, not a confidence interval).">KID</td>'+METH.map(m=>`<td class="${m==kb?'best':''}">${D.summary[m].kid.mean.toFixed(4)} <span class="hint">±${D.summary[m].kid.std.toFixed(4)}</span></td>`).join('')+'<td>0</td></tr>'}
+ $('board').innerHTML=h;
+ $('boardnote').textContent='Read the gray row first: any metric where gray ties or beats a method cannot tell that method from doing nothing. Truth cells for PSNR/SSIM/LPIPS/AuC are perfect by construction.';
+})();
+
+// ---- 2. sample explorer
+D.samples.forEach((s,j)=>{const o=document.createElement('option');o.value=j;o.textContent=`photo ${s.i+1} · ${s.name}`;$('pick').appendChild(o)});
+ORDER.forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=M[k][0];$('met').appendChild(o)});$('met').value='psnr';
+$('legend').innerHTML=METH.map(m=>`<span class="sw" style="background:var(${COL[m]});margin-left:8px"></span>${m}`).join('')+' · curves = all photos (each scaled to its own peak, axis clipped at the 1st to 99th percentile), vertical lines = this photo';
+let cur=0;
+const pct=(k,m,i)=>{const a=D.per[m][k],v=a[i];let c=0;for(const x of a)if(x<v)c++;return Math.round(100*c/a.length)};
+function show(j){
+ cur=j;$('pick').value=j;const s=D.samples[j],i=s.i;$('pname').textContent=`index ${i} in the ${D.split} split`;
+ $('imgs').innerHTML=[...METH,'ground_truth'].map(m=>`<figure><img src="${s.imgs[m]}" alt="${lab(m)}"><figcaption><span class="sw" style="background:var(${COL[m]})"></span>${lab(m)}</figcaption></figure>`).join('');
+ const v=(m,k)=>D.per[m][k][i];
+ let h='<tr><th>metric</th>'+[...METH,'ground_truth'].map(m=>`<th>${lab(m)}</th>`).join('')+'</tr>';
+ for(const grp of ['colour','closeness']){h+=`<tr class="grp"><td colspan="${METH.length+2}">${grp=='colour'?'Colour':'Closeness (reference)'}</td></tr>`;
+  for(const k of ORDER.filter(x=>M[x][2]==grp)){const tr=v('ground_truth',k),best=bestOf(k,m=>v(m,k),tr);
+   h+=`<tr><td class="name" title="${M[k][3]}">${M[k][0]}</td>`+METH.map(m=>`<td class="${m==best?'best':''}">${fmt(k,v(m,k))}</td>`).join('')+`<td>${grp=='closeness'?'—':fmt(k,tr)}</td></tr>`}}
+ $('one').innerHTML=h;draw();reflect(i);
+ try{$('note').value=localStorage.getItem('evalnote-'+D.split+'-'+i)||''}catch(e){$('note').value=''}
+}
+function reflect(i){
+ const v=(m,k)=>D.per[m][k][i],L=[],cand=REAL.length?REAL:METH;
+ const win=grp=>{const ks=ORDER.filter(x=>M[x][2]==grp&&x!='auc_ab'&&x!='colorfulness'),w={};METH.forEach(m=>w[m]=0);
+  for(const k of ks)w[bestOf(k,m=>v(m,k),v('ground_truth',k))]++;return[w,ks.length]};
+ const top=w=>Object.keys(w).reduce((a,b)=>w[b]>w[a]?b:a);
+ const [cw,cn]=win('colour'),[pw,pn]=win('closeness'),tc=top(cw),tp=top(pw);
+ const tally=w=>METH.map(m=>`${m} ${w[m]}`).join(', ');
+ L.push(`<b>Colour metrics</b> (${cn}): ${tc} wins ${cw[tc]} of ${cn} (${tally(cw)}).`);
+ L.push(`<b>Closeness metrics</b> (${pn}): ${tp} wins ${pw[tp]} of ${pn} (${tally(pw)}).`);
+ if(tc!=tp) L.push(`<span class="tag">disagreement</span> The colour metrics favour <b>${tc}</b> but the closeness metrics favour <b>${tp}</b> on this photo: the same kind of trade-off as in the scoreboard.`);
+ for(const m of cand){const worse=['psnr','ssim'].filter(k=>v('gray',k)>v(m,k));
+  if(worse.length) L.push(`${m} scores <b>lower than the plain gray image</b> on ${worse.map(k=>M[k][0]).join(' and ')} for this photo, although it added colour.`)}
+ L.push(`The real photo has ${(v('ground_truth','vivid_share')*100).toFixed(1)}% vivid pixels; `+cand.map(m=>`${m} has ${(v(m,'vivid_share')*100).toFixed(1)}%`).join(', ')+'.');
+ L.push(`Among all ${D.n} photos, this photo's PSNR is at the `+cand.map(m=>`${pct('psnr',m,i)}th percentile for ${m}`).join(', ')+' (higher = an easier photo for that method).');
+ L.push('<span class="hint">Look at the pictures before trusting any of this: the metrics count, they do not look.</span>');
+ $('refl').innerHTML=L.map(x=>`<li>${x}</li>`).join('');
+}
+
+// ---- 3. distribution
+function draw(){
+ const k=$('met').value,i=D.samples[cur].i,cv=$('cv'),dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+ cv.width=W*dpr;cv.height=H*dpr;const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);$('metdef').textContent=M[k][3];
+ const all=METH.flatMap(m=>D.per[m][k]).sort((a,b)=>a-b),q=f=>all[Math.min(all.length-1,Math.floor(f*all.length))],lo=q(0.01),hi=q(0.99),B=40,pad={l:8,r:8,t:10,b:26},w=W-pad.l-pad.r,h=H-pad.t-pad.b;
+ const xs=x=>pad.l+(hi==lo?0.5:Math.min(1,Math.max(0,(x-lo)/(hi-lo))))*w;
+ g.lineWidth=2;for(const m of METH){const c=new Array(B).fill(0);for(const x of D.per[m][k])c[Math.max(0,Math.min(B-1,Math.floor((hi==lo?0:(x-lo)/(hi-lo))*B)))]++;
+  const mm=Math.max(...c)||1;g.strokeStyle=css(COL[m]);g.beginPath();c.forEach((n,b)=>{const x=pad.l+(b+.5)/B*w,y=pad.t+h-(n/mm)*h;b?g.lineTo(x,y):g.moveTo(x,y)});g.stroke()}
+ g.strokeStyle=css('--line');g.lineWidth=1;g.beginPath();g.moveTo(pad.l,pad.t+h);g.lineTo(pad.l+w,pad.t+h);g.stroke();
+ g.fillStyle=css('--mut');g.font='12px system-ui';g.textAlign='left';g.fillText(fmt(k,lo),pad.l,H-8);g.textAlign='right';g.fillText(fmt(k,hi),W-pad.r,H-8);
+ const tr=D.per.ground_truth[k][i];if(M[k][2]=='colour'&&k!='auc_ab_balanced'){const x=xs(tr);g.setLineDash([4,3]);g.strokeStyle=css(COL.ground_truth);g.beginPath();g.moveTo(x,pad.t);g.lineTo(x,pad.t+h);g.stroke();g.setLineDash([]);g.fillStyle=css(COL.ground_truth);g.textAlign='center';g.fillText('truth',Math.min(W-20,Math.max(20,x)),pad.t+8)}
+ for(const m of METH){const x=xs(D.per[m][k][i]);g.strokeStyle=css(COL[m]);g.lineWidth=2.5;g.beginPath();g.moveTo(x,pad.t+14);g.lineTo(x,pad.t+h);g.stroke()}
+}
+$('pick').onchange=e=>show(+e.target.value);$('prev').onclick=()=>show((cur+D.samples.length-1)%D.samples.length);
+$('next').onclick=()=>show((cur+1)%D.samples.length);$('rand').onclick=()=>show(Math.floor(Math.random()*D.samples.length));
+$('met').onchange=draw;window.addEventListener('resize',draw);
+$('note').addEventListener('input',()=>{try{localStorage.setItem('evalnote-'+D.split+'-'+D.samples[cur].i,$('note').value)}catch(e){}});
+// optional deep link: ?photo=<test-split index>&metric=<metric key>
+(function(){const q=new URLSearchParams(location.search),ph=q.get('photo'),mt=q.get('metric');
+ if(mt&&M[mt]){$('met').value=mt}
+ const j=ph===null?0:Math.max(0,D.samples.findIndex(s=>String(s.i)===ph));show(j)})();
+</script></body></html>
