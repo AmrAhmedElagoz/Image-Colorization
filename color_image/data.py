@@ -45,20 +45,3 @@ class ColorizationDataset(Dataset):
         L, ab = split_lab(rgb[None])
         return {"rgb": rgb, "L": L[0], "ab": ab[0], "name": self.names[i]}
 
-def norm_L(L: torch.Tensor) -> torch.Tensor:
-    """L in [0, 100] -> [-1, 1], the range the SD VAE and CLIP expect."""
-    return L / 50.0 - 1.0
-
-
-def denorm_L(L_n: torch.Tensor) -> torch.Tensor:
-    return (L_n + 1.0) * 50.0
-
-AB_SCALE = 110.0
-
-def norm_ab(ab: torch.Tensor) -> torch.Tensor:
-    """ab (about +-110) -> about [-1, 1]."""
-    return ab / AB_SCALE
-
-
-def denorm_ab(ab_n: torch.Tensor) -> torch.Tensor:
-    return ab_n * AB_SCALE
