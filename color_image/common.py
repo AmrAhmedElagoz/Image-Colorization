@@ -53,3 +53,23 @@ def auc_ab(ab: torch.Tensor, ab_gt: torch.Tensor, max_t: int = 150) -> torch.Ten
     d = (ab.float() - ab_gt.float()).norm(dim=1)
     passed = (max_t + 1 - torch.ceil(d)).clamp(0, max_t + 1)
     return (passed / (max_t + 1)).flatten(1).mean(1)
+
+
+def norm_L(L: torch.Tensor) -> torch.Tensor:
+    """L in [0, 100] -> [-1, 1], the range the SD VAE and CLIP expect."""
+    return L / 50.0 - 1.0
+
+
+def denorm_L(L_n: torch.Tensor) -> torch.Tensor:
+    return (L_n + 1.0) * 50.0
+
+AB_SCALE = 110.0
+
+def norm_ab(ab: torch.Tensor) -> torch.Tensor:
+    """ab (about +-110) -> about [-1, 1]."""
+    return ab / AB_SCALE
+
+
+def denorm_ab(ab_n: torch.Tensor) -> torch.Tensor:
+    return ab_n * AB_SCALE
+    
