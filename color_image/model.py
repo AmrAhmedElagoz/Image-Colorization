@@ -133,7 +133,7 @@ class ColorHead(nn.Module):
         self.conv = nn.Conv2d(in_ch, n_bins, 1)
 
     def forward(self, feat: torch.Tensor) -> torch.Tensor:
-        return self.conv(feat)
+        return self.conv(feat.float())  # decoder features are bf16; the head's weights are fp32
 
 
 class SDUNet(nn.Module):
