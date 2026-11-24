@@ -45,3 +45,13 @@ class ModelConfig:
     n_bins: int = 313
     grad_checkpointing: bool = True
 
+@dataclass
+class LossConfig:
+    w_l1: float = 1.0          
+    w_lpips: float = 1.0       
+    w_ce: float = 0.1          # rebalanced 313-bin color CE
+    lpips_net: str = "alex"    # defults to alexnet
+    lam: float = 0.5           # Zhang hyperparam
+    sigma: float = 5.0         # Gaussian hyperparam
+    knn: int = 5
+    prior: Path = ROOT / "color_image" / "assets" / "ab_prior.npy"
