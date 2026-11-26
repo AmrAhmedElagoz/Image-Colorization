@@ -93,3 +93,13 @@ class ColorizationLoss(nn.Module):
         ce = self.ce(logits, ab_gt)
         total = self.conf.w_l1 * l1 + self.conf.w_lpips * lp + self.conf.w_ce * ce
         return total, {"l1": l1.item(), "lpips": lp.item(), "ce": ce.item(), "total": total.item()}
+
+
+def d_hinge(real: list[torch.Tensor], fake: list[torch.Tensor]) -> torch.Tensor:
+    """Discriminator hinge loss"""
+    return sum(F.relu(1 - r).mean() + F.relu(1 + f).mean() for r, f in zip(real, fake)) / len(real)
+
+
+def g_hinge(fake: list[torch.Tensor]) -> torch.Tensor:
+    """Generator adversarial loss"""
+    return -sum(f.mean() for f in fake) / len(fake)
