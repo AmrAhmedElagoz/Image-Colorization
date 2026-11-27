@@ -32,7 +32,6 @@ dependencies = [
 ]
 
 [project.scripts]
-color_image-train = "color_image.train:main"
 color_image-infer = "color_image.infer:main"
 
 [project.optional-dependencies]
@@ -53,6 +52,12 @@ dev    = [
 ]
 
 
+
+baselines = [
+    "opencv-python-headless>=4.8",   # imported by the vendored basicsr in baselines/ddcolor
+    "huggingface-hub",               # DDColor weights (piddnad/ddcolor_paper)
+    "pytorch-fid>=0.3",              # FID / KID in scripts/evaluate.py --realism
+]
 
 serve = [
     "fastapi>=0.115",

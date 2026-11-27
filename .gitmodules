@@ -4,3 +4,6 @@
 [submodule "baselines/sd_lora"]
 	path = baselines/sd_lora
 	url = git@github.com:mohsenosl99/colorization_SD_Lora.git
+[submodule "baselines/ddcolor"]
+	path = baselines/ddcolor
+	url = https://github.com/piddnad/DDColor.git
