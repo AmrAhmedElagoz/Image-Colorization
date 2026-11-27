@@ -55,3 +55,34 @@ class LossConfig:
     sigma: float = 5.0         # Gaussian hyperparam
     knn: int = 5
     prior: Path = ROOT / "color_image" / "assets" / "ab_prior.npy"
+
+@dataclass
+class TrainConfig:
+    data: Path = ROOT / "data" / "coco"
+    out: Path = ROOT / "runs" / "phase_b"
+    clip_ckpt: Path | None = ROOT / "runs" / "clip" / "gray_clip.pt"   # distilled GrayCLIP
+    size: int = 256
+    epochs: int = 12
+    batch_size: int = 2
+    accum: int = 4             # effective batch = batch_size * accum
+    lr_lora: float = 1e-4      # pretrained-model LoRA layers
+    lr_new: float = 1e-3       # skip convs + colour head
+    wd: float = 0.01
+    warmup: int = 100          # optimiser steps
+    clip_grad: float = 1.0
+    patience: int = 3          
+    min_delta: float = 0.0
+    workers: int = 4
+    seed: int = 42
+    limit: int | None = None       # first N train images
+    val_limit: int | None = None   # first N val images
+    n_vis: int = 8                 # images in the per-epoch sample grid
+    resume: Path | None = None
+    # GAN phase
+    gan: bool = False
+    init: Path | None = None       # start the generator from these weights (runs/phase_b/best.pt)
+    lr_d: float = 1e-4             # discriminator heads
+    d_warmup: int = 200            # optimiser steps where only D learns its job (no adversarial loss on G yet)
+    w_adv: float = 0.05
+    diffaug: bool = True
+    dino_id: str = "facebook/dinov2-small"
