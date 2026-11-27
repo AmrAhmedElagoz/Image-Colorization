@@ -223,3 +223,6 @@ __marimo__/
 data/
 runs/
 .DS_Store 
+scripts/test.py
+scripts/clip_gap_viz.py
+scripts/figure.py
