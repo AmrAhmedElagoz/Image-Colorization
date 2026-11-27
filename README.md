@@ -2,6 +2,8 @@
 
 Learned image colorization with a lightweight diffusion / GAN head (CSE 681).
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1yJBFjaqxmEywGglq4SRV7dnocT0v_SKN?usp=sharing)
+
 A grayscale photo goes in and a colour photo comes out. The model only predicts colour (the Lab *ab* channels);
 the brightness (*L*) is always the input's own, so no detail is lost. It is built on a frozen Stable Diffusion
 model (InstructPix2Pix) run in **one step**, adapted with small LoRA layers (4.7M trainable parameters), and
@@ -49,7 +51,8 @@ python scripts/download_coco.py  # data/coco: images + train/val/test splits (gr
 
 ## Usage
 
-**Colourise your own images** (any size; colour predicted at 256, applied to the full-resolution *L*):
+**Colourise your own images** (any size; colour predicted at 256, applied to the full-resolution *L*).
+No local GPU? Use the [Colab notebook](https://colab.research.google.com/drive/1yJBFjaqxmEywGglq4SRV7dnocT0v_SKN?usp=sharing).
 
 ```bash
 color_image-infer photo.jpg                          # -> runs/infer/photo.png
